@@ -15,6 +15,18 @@ type Scrobble struct {
 	URL       string
 }
 
+// ScrobbleArray is an array of scrobble objects
+type ScrobbleArray []Scrobble
+
+// ToCsv converts array of scrobble objects to csv
+func (scrobbles ScrobbleArray) ToCsv(sep string) []string {
+	csv := make([]string, len(scrobbles))
+	for i, scrobble := range scrobbles {
+		csv[i] = scrobble.Timestamp.String() + sep + scrobble.Track + sep + scrobble.Artist + sep + scrobble.Album + sep + scrobble.URL
+	}
+	return csv
+}
+
 type recentTracksResponse struct {
 	Recenttracks struct {
 		Attr struct {
@@ -49,8 +61,8 @@ type recentTracksResponse struct {
 	} `json:"recenttracks"`
 }
 
-// GetScrobbled gets user's scrobbled tracks.
-func GetScrobbled(username string, apiKey string) (tracks []Scrobble, err error) {
+// GetScrobbles gets user's scrobbled tracks.
+func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error) {
 	resp := new(recentTracksResponse)
 	getJSON("http://ws.audioscrobbler.com/2.0/?"+
 		"method=user.getrecenttracks"+
@@ -81,10 +93,11 @@ func GetScrobbled(username string, apiKey string) (tracks []Scrobble, err error)
 	// Standard time is "Jan 2 15:04:05 MST 2006  (MST is GMT-0700)"
 	layout := "02 Jan 2006, 15:04"
 
+	idx := 0
 	for i := 0; i < totalPages; i++ {
 		resp := <-messages
 		ts := resp.Recenttracks.Track
-		for j, track := range ts {
+		for _, track := range ts {
 			scrobbleTime, _ := time.Parse(layout, track.Date.Text)
 			t := Scrobble{
 				Track:     track.Name,
@@ -93,7 +106,8 @@ func GetScrobbled(username string, apiKey string) (tracks []Scrobble, err error)
 				Timestamp: scrobbleTime,
 				URL:       track.URL,
 			}
-			tracks[i*50+j] = t
+			tracks[idx] = t
+			idx++
 		}
 	}
 

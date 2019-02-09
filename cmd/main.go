@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"lastfmexport"
 	"log"
 	"time"
@@ -23,18 +24,25 @@ func main() {
 		return
 	}
 
-	// Get scrobbles
+	// Measure exec time
 	start := time.Now()
-	tracks, err := lastfmexport.GetScrobbled("muser1901", config.APIKey)
-	elapsed := time.Since(start)
-	log.Printf("Execution time: %s\n", elapsed)
+
+	// Get scrobbles
+	tracks, err := lastfmexport.GetLovedTracks("muser1901", config.APIKey)
 
 	// Print scrobbles
 	if err != nil {
 		log.Fatalln("Error fetching scrobbles:", err)
 	} else {
-		for _, t := range tracks {
-			log.Printf("%s\t%s\t%s\t%s\n", t.Timestamp, t.Track, t.Artist, t.URL)
+		var x lastfmexport.TrackArray
+		x = tracks
+		csv := x.ToCsv("\t")
+		for _, l := range csv {
+			fmt.Println(l)
 		}
 	}
+
+	// Print exec time
+	elapsed := time.Since(start)
+	log.Printf("Execution time: %s\n", elapsed)
 }
