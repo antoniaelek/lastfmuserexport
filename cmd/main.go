@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"lastfmexport"
+	"lastfmuserexport"
 	"log"
 	"time"
 
@@ -28,13 +28,13 @@ func main() {
 	start := time.Now()
 
 	// Get
-	data, err := lastfmexport.GetTags("muser1901", config.APIKey)
+	data, err := lastfmuserexport.GetTags("muser1901", config.APIKey)
 
 	// Print
 	if err != nil {
 		log.Fatalln("Error fetching data:", err)
 	} else {
-		var x lastfmexport.TagArray
+		var x lastfmuserexport.TagArray
 		x = data
 		csv := x.ToCsv("\t")
 		for _, l := range csv {

@@ -1,4 +1,4 @@
-package lastfmexport
+package lastfmuserexport
 
 import (
 	"fmt"
