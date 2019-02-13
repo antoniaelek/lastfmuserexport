@@ -63,12 +63,11 @@ type lovedTracksResponse struct {
 // GetLovedTracks gets user's loved tracks
 func GetLovedTracks(username string, apiKey string) (tracks []Track, err error) {
 	resp := new(lovedTracksResponse)
-	getJSON("http://ws.audioscrobbler.com/2.0/?"+
+	getJSON(baseURL+
 		"method=user.getlovedtracks"+
-		"&api_key="+apiKey+
-		"&format=json"+
 		"&user="+username+
-		"&page=1", resp)
+		"&api_key="+apiKey+
+		"&format=json", resp)
 
 	total, err := strconv.Atoi(resp.Lovedtracks.Attr.Total)
 	if err != nil {
@@ -121,9 +120,9 @@ func getLovedTracksPage(page int, c chan *lovedTracksResponse, username string, 
 	for {
 		getJSON(baseURL+
 			"?method=user.getlovedtracks"+
+			"&user="+username+
 			"&api_key="+apiKey+
 			"&format=json"+
-			"&user="+username+
 			"&page="+strconv.Itoa(page), resp)
 		if len(resp.Lovedtracks.Track) > 0 {
 			c <- resp

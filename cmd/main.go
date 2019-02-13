@@ -27,15 +27,15 @@ func main() {
 	// Measure exec time
 	start := time.Now()
 
-	// Get scrobbles
-	tracks, err := lastfmexport.GetLovedTracks("muser1901", config.APIKey)
+	// Get
+	data, err := lastfmexport.GetTags("muser1901", config.APIKey)
 
-	// Print scrobbles
+	// Print
 	if err != nil {
-		log.Fatalln("Error fetching scrobbles:", err)
+		log.Fatalln("Error fetching data:", err)
 	} else {
-		var x lastfmexport.TrackArray
-		x = tracks
+		var x lastfmexport.TagArray
+		x = data
 		csv := x.ToCsv("\t")
 		for _, l := range csv {
 			fmt.Println(l)
