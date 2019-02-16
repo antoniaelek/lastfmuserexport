@@ -1,7 +1,7 @@
 package export
 
 import (
-	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -50,7 +50,7 @@ func GetTags(user string, apiKey string) (tags []Tag, err error) {
 	for _, artist := range artists {
 		artistTags, err := getTagsForArtist(artist.Name, apiKey)
 		if err != nil {
-			fmt.Println("ERROR")
+			log.Printf("%-5s tags for artist: %s\n", "ERROR", artist.Name)
 			continue
 		}
 		for _, at := range artistTags {
@@ -60,6 +60,7 @@ func GetTags(user string, apiKey string) (tags []Tag, err error) {
 			}
 			tagsMap[at.Name] = at
 		}
+		log.Printf("%-5s tags for artist: %s\n", "OK", artist.Name)
 	}
 
 	tags = make([]Tag, len(tagsMap))

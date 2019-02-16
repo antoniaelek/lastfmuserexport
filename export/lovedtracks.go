@@ -1,6 +1,7 @@
 package export
 
 import (
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -83,6 +84,11 @@ func GetLovedTracks(username string, apiKey string) (tracks []Track, err error) 
 
 	for i := 1; i <= totalPages; i++ {
 		go getLovedTracksPage(i, messages, username, apiKey)
+
+		// Because of rate limiting
+		if i%20 == 0 {
+			time.Sleep(1000 * time.Millisecond)
+		}
 	}
 
 	tracks = make([]Track, total)
@@ -124,10 +130,14 @@ func getLovedTracksPage(page int, c chan *lovedTracksResponse, username string, 
 			"&api_key="+apiKey+
 			"&format=json"+
 			"&page="+strconv.Itoa(page), resp)
+
 		if len(resp.Lovedtracks.Track) > 0 {
+			log.Printf("%-5s loved tracks page %d\n", "OK", page)
 			c <- resp
 			break
 		}
+
+		log.Printf("%-5s loved tracks page %d\n", "RETRY", page)
 		time.Sleep(500 * time.Millisecond)
 	}
 }

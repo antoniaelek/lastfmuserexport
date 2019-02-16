@@ -3,11 +3,9 @@ package main
 import (
 	"bufio"
 	"flag"
-	"fmt"
 	"lastfmuserexport/export"
 	"log"
 	"os"
-	"time"
 )
 
 func main() {
@@ -31,7 +29,7 @@ func main() {
 
 	if err != nil && len(err) > 0 {
 		for _, e := range err {
-			fmt.Println(e)
+			log.Println(e)
 		}
 		return
 	}
@@ -52,77 +50,101 @@ func main() {
 
 // GetSrobbles gets scrobbles
 func GetSrobbles(user string, apiKey string) {
-	fmt.Println("Fetching scrobbles...")
+	log.Printf("Fetching scrobbles for user %s with api key %s...\n", user, apiKey)
 	data, err := export.GetScrobbles(user, apiKey)
 
 	if err != nil {
-		fmt.Println("Error fetching scrobbles:", err)
-	} else {
-		var x export.ScrobbleArray
-		x = data
-		csv := x.ToCsv("\t")
-		err = SaveCsvFile(csv, "scrobbles.csv")
-		if err != nil {
-			fmt.Println("Error saving scrobbles file", err)
-		}
+		log.Println("Error fetching scrobbles.")
+		panic(err)
 	}
+
+	log.Println("Fetched scrobbles.")
+	var x export.ScrobbleArray
+	x = data
+	csv := x.ToCsv("\t")
+	file := "scrobbles.csv"
+
+	err = SaveCsvFile(csv, file)
+	if err != nil {
+		log.Panicf("Error saving to %s.\n", file)
+		panic(err)
+	}
+	log.Printf("Saved %s.\n", file)
 }
 
 // GetLovedTracks gets loved tracks
 func GetLovedTracks(user string, apiKey string) {
-	fmt.Println("Fetching loved tracks...")
+	log.Printf("Fetching loved tracks for user %s with api key %s...\n", user, apiKey)
 	data, err := export.GetLovedTracks(user, apiKey)
 
 	if err != nil {
-		fmt.Println("Error fetching loved tracks:", err)
-	} else {
-		var x export.TrackArray
-		x = data
-		csv := x.ToCsv("\t")
-		err = SaveCsvFile(csv, "loved.csv")
-		if err != nil {
-			fmt.Println("Error saving loved tracks file", err)
-		}
+		log.Println("Error fetching loved tracks:")
+		panic(err)
 	}
+
+	var x export.TrackArray
+	x = data
+	csv := x.ToCsv("\t")
+	file := "loved.csv"
+
+	log.Println("Fetched loved tracks.")
+	err = SaveCsvFile(csv, file)
+	if err != nil {
+		log.Panicf("Error saving to %s.\n", file)
+		panic(err)
+	}
+
+	log.Printf("Saved %s.\n", file)
 }
 
 // GetTags gets tags
 func GetTags(user string, apiKey string) {
-	fmt.Println("Fetching tags...")
-	data, err := export.GetTags(user, apiKey)
+	log.Printf("Fetching tags for user %s with api key %s...\n", user, apiKey)
 
+	data, err := export.GetTags(user, apiKey)
 	if err != nil {
-		fmt.Println("Error fetching tags:", err)
-	} else {
-		var x export.TagArray
-		x = data
-		csv := x.ToCsv("\t")
-		err = SaveCsvFile(csv, "tags.csv")
-		if err != nil {
-			fmt.Println("Error saving tags file", err)
-		}
+		log.Println("Error fetching tags.")
+		panic(err)
 	}
+
+	log.Println("Fetched tags.")
+	var x export.TagArray
+	x = data
+	csv := x.ToCsv("\t")
+	file := "tags.csv"
+
+	err = SaveCsvFile(csv, file)
+	if err != nil {
+		log.Panicf("Error saving to %s.\n", file)
+		panic(err)
+	}
+
+	log.Printf("Saved %s.\n", file)
 }
 
 // GetArtists gets artists
 func GetArtists(user string, apiKey string) {
-	fmt.Println("Fetching artists...")
-	start := time.Now()
+	log.Printf("Fetching artists for user %s with api key %s...\n", user, apiKey)
+
 	data, err := export.GetArtists(user, apiKey)
-	elapsed := time.Since(start)
-	log.Printf("Artists fetch time: %s\n", elapsed)
 
 	if err != nil {
-		fmt.Println("Error fetching artists:", err)
-	} else {
-		var x export.ArtistArray
-		x = data
-		csv := x.ToCsv("\t")
-		err = SaveCsvFile(csv, "artists.csv")
-		if err != nil {
-			fmt.Println("Error saving artists file", err)
-		}
+		log.Println("Error fetching artists.")
+		panic(err)
 	}
+
+	log.Println("Fetched artists.")
+	var x export.ArtistArray
+	x = data
+	csv := x.ToCsv("\t")
+	file := "artists.csv"
+	err = SaveCsvFile(csv, file)
+	if err != nil {
+		log.Panicf("Error saving to %s.\n", file)
+		panic(err)
+	}
+
+	log.Printf("Saved %s.\n", file)
 }
 
 // SaveCsvFile saves csv to file

@@ -64,11 +64,9 @@ type recentTracksResponse struct {
 
 // GetScrobbles gets user's scrobbled tracks.
 func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error) {
-	start := time.Now()
-
 	resp := new(recentTracksResponse)
-	getJSON("http://ws.audioscrobbler.com/2.0/?"+
-		"method=user.getrecenttracks"+
+	getJSON(baseURL+
+		"?method=user.getrecenttracks"+
 		"&api_key="+apiKey+
 		"&format=json"+
 		"&user="+username+
@@ -88,9 +86,12 @@ func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error)
 
 	for i := 1; i <= totalPages; i++ {
 		go getPage(i, messages, username, apiKey)
+
+		// Because of rate limiting
+		if i%20 == 0 {
+			time.Sleep(1000 * time.Millisecond)
+		}
 	}
-	elapsed := time.Since(start)
-	log.Printf("Scrobbles fetch time: %s\n", elapsed)
 
 	tracks = make([]Scrobble, total)
 
@@ -115,14 +116,10 @@ func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error)
 			idx++
 		}
 	}
-	elapsed = time.Since(start)
-	log.Printf("Scrobbles fetch time: %s\n", elapsed)
 
 	sort.Slice(tracks, func(i, j int) bool {
 		return tracks[i].Timestamp.Before(tracks[j].Timestamp)
 	})
-	elapsed = time.Since(start)
-	log.Printf("Scrobbles fetch time: %s\n", elapsed)
 
 	return tracks, nil
 }
@@ -136,10 +133,14 @@ func getPage(page int, c chan *recentTracksResponse, username string, apiKey str
 			"&format=json"+
 			"&user="+username+
 			"&page="+strconv.Itoa(page), resp)
+
 		if len(resp.Recenttracks.Track) > 0 {
+			log.Printf("%-5s scrobbles page %d\n", "OK", page)
 			c <- resp
 			break
 		}
+
+		log.Printf("%-5s scrobbles page %d\n", "RETRY", page)
 		time.Sleep(500 * time.Millisecond)
 	}
 }

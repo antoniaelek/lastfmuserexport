@@ -1,6 +1,7 @@
 package export
 
 import (
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -74,6 +75,11 @@ func GetArtists(user string, apiKey string) (artists []Artist, err error) {
 
 	for i := 1; i <= totalPages; i++ {
 		go getArtistsPage(i, messages, user, apiKey)
+
+		// Because of rate limiting
+		if i%20 == 0 {
+			time.Sleep(1000 * time.Millisecond)
+		}
 	}
 
 	artists = make([]Artist, total)
@@ -112,10 +118,14 @@ func getArtistsPage(page int, c chan *artistsResponse, username string, apiKey s
 			"&page="+strconv.Itoa(page)+
 			"&api_key="+apiKey+
 			"&format=json", resp)
+
 		if len(resp.Topartists.Artist) > 0 {
+			log.Printf("%-5s artists page %d\n", "OK", page)
 			c <- resp
 			break
 		}
+
+		log.Printf("%-5s artists page %d\n", "RETRY", page)
 		time.Sleep(500 * time.Millisecond)
 	}
 }
