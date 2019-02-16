@@ -1,6 +1,7 @@
-package lastfmuserexport
+package export
 
 import (
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -63,6 +64,8 @@ type recentTracksResponse struct {
 
 // GetScrobbles gets user's scrobbled tracks.
 func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error) {
+	start := time.Now()
+
 	resp := new(recentTracksResponse)
 	getJSON("http://ws.audioscrobbler.com/2.0/?"+
 		"method=user.getrecenttracks"+
@@ -86,6 +89,8 @@ func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error)
 	for i := 1; i <= totalPages; i++ {
 		go getPage(i, messages, username, apiKey)
 	}
+	elapsed := time.Since(start)
+	log.Printf("Scrobbles fetch time: %s\n", elapsed)
 
 	tracks = make([]Scrobble, total)
 
@@ -110,10 +115,14 @@ func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error)
 			idx++
 		}
 	}
+	elapsed = time.Since(start)
+	log.Printf("Scrobbles fetch time: %s\n", elapsed)
 
 	sort.Slice(tracks, func(i, j int) bool {
 		return tracks[i].Timestamp.Before(tracks[j].Timestamp)
 	})
+	elapsed = time.Since(start)
+	log.Printf("Scrobbles fetch time: %s\n", elapsed)
 
 	return tracks, nil
 }

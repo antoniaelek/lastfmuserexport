@@ -1,6 +1,7 @@
-package lastfmuserexport
+package export
 
 import (
+	"sort"
 	"strconv"
 	"time"
 )
@@ -94,6 +95,10 @@ func GetArtists(user string, apiKey string) (artists []Artist, err error) {
 			idx++
 		}
 	}
+
+	sort.Slice(artists, func(i, j int) bool {
+		return artists[i].Name < artists[j].Name
+	})
 
 	return artists, nil
 }

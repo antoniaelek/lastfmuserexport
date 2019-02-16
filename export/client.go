@@ -1,4 +1,4 @@
-package lastfmuserexport
+package export
 
 import (
 	"encoding/json"

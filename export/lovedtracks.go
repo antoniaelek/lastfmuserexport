@@ -1,4 +1,4 @@
-package lastfmuserexport
+package export
 
 import (
 	"sort"
@@ -64,7 +64,7 @@ type lovedTracksResponse struct {
 func GetLovedTracks(username string, apiKey string) (tracks []Track, err error) {
 	resp := new(lovedTracksResponse)
 	getJSON(baseURL+
-		"method=user.getlovedtracks"+
+		"?method=user.getlovedtracks"+
 		"&user="+username+
 		"&api_key="+apiKey+
 		"&format=json", resp)

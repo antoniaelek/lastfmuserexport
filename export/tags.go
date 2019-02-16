@@ -1,7 +1,8 @@
-package lastfmuserexport
+package export
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -88,6 +89,10 @@ func getTagsForArtist(artist string, apiKey string) (tags []Tag, err error) {
 		}
 		tags[i] = tag
 	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
 
 	return tags, nil
 }
