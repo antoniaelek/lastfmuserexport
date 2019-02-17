@@ -2,6 +2,7 @@ package export
 
 import (
 	"log"
+	"net/http"
 	"sort"
 	"strconv"
 	"time"
@@ -63,14 +64,19 @@ type lovedTracksResponse struct {
 
 // GetLovedTracks gets user's loved tracks
 func GetLovedTracks(username string, apiKey string) (tracks []Track, err error) {
+	var client = http.Client{Timeout: 10 * time.Second}
 	resp := new(lovedTracksResponse)
 	getJSON(baseURL+
 		"?method=user.getlovedtracks"+
 		"&user="+username+
 		"&api_key="+apiKey+
-		"&format=json", resp)
+		"&format=json", &client, resp)
 
 	total, err := strconv.Atoi(resp.Lovedtracks.Attr.Total)
+	if err != nil {
+		return
+	}
+	total, err = strconv.Atoi(resp.Lovedtracks.Attr.Total)
 	if err != nil {
 		return
 	}
@@ -80,25 +86,38 @@ func GetLovedTracks(username string, apiKey string) (tracks []Track, err error) 
 		return
 	}
 
-	messages := make(chan *lovedTracksResponse)
+	log.Printf("There are %d loved tracks across %d pages\n", total, totalPages)
 
-	for i := 1; i <= totalPages; i++ {
-		go getLovedTracksPage(i, messages, username, apiKey)
-
-		// Because of rate limiting
-		if i%20 == 0 {
-			time.Sleep(1000 * time.Millisecond)
+	chunkSize := 30
+	tracks = make([]Track, 0, total)
+	for i := 1; i <= totalPages; i = i + chunkSize {
+		upperBound := i + chunkSize - 1
+		if upperBound > totalPages {
+			upperBound = totalPages
 		}
+		tracks = append(tracks, getlovedTracksPart(&client, i, upperBound, username, apiKey)...)
 	}
 
-	tracks = make([]Track, total)
+	sort.Slice(tracks, func(i, j int) bool {
+		return tracks[i].Timestamp.Before(tracks[j].Timestamp)
+	})
+
+	return tracks, nil
+}
+
+func getlovedTracksPart(client *http.Client, firstPage int, lastPage int, username string, apiKey string) []Track {
+	messages := make(chan *lovedTracksResponse)
+
+	for i := firstPage; i <= lastPage; i++ {
+		go getLovedTracksPage(i, client, messages, username, apiKey)
+	}
 
 	// Writing down the way the standard time would look like formatted our way
 	// Standard time is "Jan 2 15:04:05 MST 2006  (MST is GMT-0700)"
 	layout := "02 Jan 2006, 15:04"
 
-	idx := 0
-	for i := 0; i < totalPages; i++ {
+	var tracks []Track
+	for i := firstPage; i <= lastPage; i++ {
 		resp := <-messages
 		ts := resp.Lovedtracks.Track
 		for _, track := range ts {
@@ -109,19 +128,13 @@ func GetLovedTracks(username string, apiKey string) (tracks []Track, err error) 
 				Timestamp: scrobbleTime,
 				URL:       track.URL,
 			}
-			tracks[idx] = t
-			idx++
+			tracks = append(tracks, t)
 		}
 	}
-
-	sort.Slice(tracks, func(i, j int) bool {
-		return tracks[i].Timestamp.Before(tracks[j].Timestamp)
-	})
-
-	return tracks, nil
+	return tracks
 }
 
-func getLovedTracksPage(page int, c chan *lovedTracksResponse, username string, apiKey string) {
+func getLovedTracksPage(page int, client *http.Client, c chan *lovedTracksResponse, username string, apiKey string) {
 	resp := new(lovedTracksResponse)
 	for {
 		getJSON(baseURL+
@@ -129,15 +142,15 @@ func getLovedTracksPage(page int, c chan *lovedTracksResponse, username string, 
 			"&user="+username+
 			"&api_key="+apiKey+
 			"&format=json"+
-			"&page="+strconv.Itoa(page), resp)
+			"&page="+strconv.Itoa(page), client, resp)
 
 		if len(resp.Lovedtracks.Track) > 0 {
-			log.Printf("%-5s loved tracks page %d\n", "OK", page)
+			log.Printf("OK loved tracks page %d\n", page)
 			c <- resp
 			break
 		}
 
-		log.Printf("%-5s loved tracks page %d\n", "RETRY", page)
+		log.Printf("RETRY loved tracks page %d\n", page)
 		time.Sleep(500 * time.Millisecond)
 	}
 }

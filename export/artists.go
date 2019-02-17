@@ -2,6 +2,7 @@ package export
 
 import (
 	"log"
+	"net/http"
 	"sort"
 	"strconv"
 	"time"
@@ -54,12 +55,13 @@ type artistsResponse struct {
 
 // GetArtists gets top tags for an artist
 func GetArtists(user string, apiKey string) (artists []Artist, err error) {
+	var client = &http.Client{Timeout: 10 * time.Second}
 	resp := new(artistsResponse)
 	getJSON(baseURL+
 		"?method=user.gettopartists"+
 		"&api_key="+apiKey+
 		"&format=json"+
-		"&user="+user, resp)
+		"&user="+user, client, resp)
 
 	total, err := strconv.Atoi(resp.Topartists.Attr.Total)
 	if err != nil {
@@ -71,15 +73,12 @@ func GetArtists(user string, apiKey string) (artists []Artist, err error) {
 		return
 	}
 
+	log.Printf("There are %d artistss across %d pages\n", total, totalPages)
+
 	messages := make(chan *artistsResponse)
 
 	for i := 1; i <= totalPages; i++ {
-		go getArtistsPage(i, messages, user, apiKey)
-
-		// Because of rate limiting
-		if i%20 == 0 {
-			time.Sleep(1000 * time.Millisecond)
-		}
+		go getArtistsPage(i, client, messages, user, apiKey)
 	}
 
 	artists = make([]Artist, total)
@@ -109,7 +108,7 @@ func GetArtists(user string, apiKey string) (artists []Artist, err error) {
 	return artists, nil
 }
 
-func getArtistsPage(page int, c chan *artistsResponse, username string, apiKey string) {
+func getArtistsPage(page int, client *http.Client, c chan *artistsResponse, username string, apiKey string) {
 	resp := new(artistsResponse)
 	for {
 		getJSON(baseURL+
@@ -117,15 +116,15 @@ func getArtistsPage(page int, c chan *artistsResponse, username string, apiKey s
 			"&user="+username+
 			"&page="+strconv.Itoa(page)+
 			"&api_key="+apiKey+
-			"&format=json", resp)
+			"&format=json", client, resp)
 
 		if len(resp.Topartists.Artist) > 0 {
-			log.Printf("%-5s artists page %d\n", "OK", page)
+			log.Printf("OK artists page %d\n", page)
 			c <- resp
 			break
 		}
 
-		log.Printf("%-5s artists page %d\n", "RETRY", page)
+		log.Printf("RETRY artists page %d\n", page)
 		time.Sleep(500 * time.Millisecond)
 	}
 }

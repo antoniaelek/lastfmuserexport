@@ -2,6 +2,7 @@ package export
 
 import (
 	"log"
+	"net/http"
 	"sort"
 	"strconv"
 	"time"
@@ -64,13 +65,15 @@ type recentTracksResponse struct {
 
 // GetScrobbles gets user's scrobbled tracks.
 func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error) {
+	var client = http.Client{Timeout: 10 * time.Second}
+
 	resp := new(recentTracksResponse)
 	getJSON(baseURL+
 		"?method=user.getrecenttracks"+
 		"&api_key="+apiKey+
 		"&format=json"+
 		"&user="+username+
-		"&page=1", resp)
+		"&page=1", &client, resp)
 
 	total, err := strconv.Atoi(resp.Recenttracks.Attr.Total)
 	if err != nil {
@@ -82,25 +85,38 @@ func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error)
 		return
 	}
 
-	messages := make(chan *recentTracksResponse)
+	log.Printf("There are %d scrobbles across %d pages\n", total, totalPages)
 
-	for i := 1; i <= totalPages; i++ {
-		go getPage(i, messages, username, apiKey)
-
-		// Because of rate limiting
-		if i%20 == 0 {
-			time.Sleep(1000 * time.Millisecond)
+	chunkSize := 30
+	tracks = make([]Scrobble, 0, total)
+	for i := 1; i <= totalPages; i = i + chunkSize {
+		upperBound := i + chunkSize - 1
+		if upperBound > totalPages {
+			upperBound = totalPages
 		}
+		tracks = append(tracks, getPart(&client, i, upperBound, username, apiKey)...)
 	}
 
-	tracks = make([]Scrobble, total)
+	sort.Slice(tracks, func(i, j int) bool {
+		return tracks[i].Timestamp.Before(tracks[j].Timestamp)
+	})
+
+	return tracks, nil
+}
+
+func getPart(client *http.Client, firstPage int, lastPage int, username string, apiKey string) []Scrobble {
+	messages := make(chan *recentTracksResponse)
+
+	for i := firstPage; i <= lastPage; i++ {
+		go getPage(i, client, messages, username, apiKey)
+	}
 
 	// Writing down the way the standard time would look like formatted our way
 	// Standard time is "Jan 2 15:04:05 MST 2006  (MST is GMT-0700)"
 	layout := "02 Jan 2006, 15:04"
 
-	idx := 0
-	for i := 0; i < totalPages; i++ {
+	var tracks []Scrobble
+	for i := firstPage; i <= lastPage; i++ {
 		resp := <-messages
 		ts := resp.Recenttracks.Track
 		for _, track := range ts {
@@ -112,35 +128,30 @@ func GetScrobbles(username string, apiKey string) (tracks []Scrobble, err error)
 				Timestamp: scrobbleTime,
 				URL:       track.URL,
 			}
-			tracks[idx] = t
-			idx++
+			tracks = append(tracks, t)
 		}
 	}
-
-	sort.Slice(tracks, func(i, j int) bool {
-		return tracks[i].Timestamp.Before(tracks[j].Timestamp)
-	})
-
-	return tracks, nil
+	return tracks
 }
 
-func getPage(page int, c chan *recentTracksResponse, username string, apiKey string) {
+func getPage(page int, client *http.Client, c chan *recentTracksResponse, username string, apiKey string) {
 	resp := new(recentTracksResponse)
+	i := 1
 	for {
 		getJSON(baseURL+
 			"?method=user.getrecenttracks"+
 			"&api_key="+apiKey+
 			"&format=json"+
 			"&user="+username+
-			"&page="+strconv.Itoa(page), resp)
+			"&page="+strconv.Itoa(page), client, resp)
 
 		if len(resp.Recenttracks.Track) > 0 {
-			log.Printf("%-5s scrobbles page %d\n", "OK", page)
+			log.Printf("OK scrobbles page %d\n", page)
 			c <- resp
 			break
 		}
 
-		log.Printf("%-5s scrobbles page %d\n", "RETRY", page)
-		time.Sleep(500 * time.Millisecond)
+		log.Printf("RETRY %-2d scrobbles page %d\n", i, page)
+		i++
 	}
 }

@@ -2,9 +2,11 @@ package export
 
 import (
 	"log"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Tag is a tag
@@ -41,6 +43,8 @@ type tagsResponse struct {
 
 // GetTags gets top tags for user
 func GetTags(user string, apiKey string) (tags []Tag, err error) {
+	var client = &http.Client{Timeout: 10 * time.Second}
+
 	artists, err := GetArtists(user, apiKey)
 	if err != nil {
 		return nil, err
@@ -48,9 +52,9 @@ func GetTags(user string, apiKey string) (tags []Tag, err error) {
 
 	tagsMap := make(map[string]Tag)
 	for _, artist := range artists {
-		artistTags, err := getTagsForArtist(artist.Name, apiKey)
+		artistTags, err := getTagsForArtist(client, artist.Name, apiKey)
 		if err != nil {
-			log.Printf("%-5s tags for artist: %s\n", "ERROR", artist.Name)
+			log.Printf("ERROR tags for artist: %s\n", artist.Name)
 			continue
 		}
 		for _, at := range artistTags {
@@ -60,7 +64,7 @@ func GetTags(user string, apiKey string) (tags []Tag, err error) {
 			}
 			tagsMap[at.Name] = at
 		}
-		log.Printf("%-5s tags for artist: %s\n", "OK", artist.Name)
+		log.Printf("OK tags for artist: %s\n", artist.Name)
 	}
 
 	tags = make([]Tag, len(tagsMap))
@@ -73,13 +77,13 @@ func GetTags(user string, apiKey string) (tags []Tag, err error) {
 	return tags, nil
 }
 
-func getTagsForArtist(artist string, apiKey string) (tags []Tag, err error) {
+func getTagsForArtist(client *http.Client, artist string, apiKey string) (tags []Tag, err error) {
 	resp := new(tagsResponse)
 	getJSON(baseURL+
 		"?method=artist.gettoptags"+
 		"&api_key="+apiKey+
 		"&format=json"+
-		"&artist="+strings.Replace(artist, " ", "+", -1), resp)
+		"&artist="+strings.Replace(artist, " ", "+", -1), client, resp)
 
 	tags = make([]Tag, len(resp.Toptags.Tag))
 	for i, t := range resp.Toptags.Tag {
