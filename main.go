@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"flag"
+	"fmt"
 	"lastfmuserexport/export"
 	"log"
 	"os"
@@ -154,9 +154,11 @@ func SaveCsvFile(csv []string, filename string) error {
 		return err
 	}
 	defer f.Close()
-	w := bufio.NewWriter(f)
+
 	for _, line := range csv {
-		w.WriteString(line + "\n")
+		fmt.Fprintln(f, line)
 	}
+	defer f.Close()
+
 	return nil
 }

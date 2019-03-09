@@ -89,7 +89,8 @@ func GetArtists(user string, apiKey string) (artists []Artist, err error) {
 		for _, a := range ts {
 			cnt, err := strconv.Atoi(a.Playcount)
 			if err != nil {
-				continue
+				log.Printf("Error fetching play count for aritst %s\n", a.Name)
+				cnt = 0
 			}
 			artist := Artist{
 				Name:      a.Name,
