@@ -19,11 +19,25 @@ type Tag struct {
 // TagArray is an array of Tag objects
 type TagArray []Tag
 
+// ArtistTagMap is map with artist url keys and Tag object values
+type ArtistTagMap map[Artist][]Tag
+
 // ToCsv converts array of Tag objects to csv
 func (Tags TagArray) ToCsv(sep string) []string {
 	csv := make([]string, len(Tags))
 	for i, Tag := range Tags {
 		csv[i] = strconv.Itoa(Tag.Count) + sep + Tag.Name + sep + Tag.URL
+	}
+	return csv
+}
+
+// ToCsv converts array of Tag objects to csv
+func (Artists ArtistTagMap) ToCsv(sep string) []string {
+	var csv []string
+	for artist, tags := range Artists {
+		for _, tag := range tags {
+			csv = append(csv, artist.Name+sep+artist.URL+sep+artist.ImageURL+sep+strconv.Itoa(tag.Count)+sep+tag.Name+sep+tag.URL)
+		}
 	}
 	return csv
 }
@@ -75,6 +89,29 @@ func GetTags(user string, apiKey string) (tags []Tag, err error) {
 	}
 
 	return tags, nil
+}
+
+// GetTagsForArtists gets tags for user's artists
+func GetTagsForArtists(user string, apiKey string) (artistsTags map[Artist][]Tag, err error) {
+	var client = &http.Client{Timeout: 10 * time.Second}
+
+	artists, err := GetArtists(user, apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	tagsMap := make(map[Artist][]Tag)
+	for _, artist := range artists {
+		artistTags, err := getTagsForArtist(client, artist.Name, apiKey)
+		if err != nil {
+			log.Printf("ERROR tags for artist: %s\n", artist.Name)
+			continue
+		}
+		tagsMap[artist] = artistTags
+		log.Printf("OK tags for artist: %s\n", artist.Name)
+	}
+
+	return tagsMap, nil
 }
 
 func getTagsForArtist(client *http.Client, artist string, apiKey string) (tags []Tag, err error) {

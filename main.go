@@ -16,6 +16,7 @@ func main() {
 	loved := flag.Bool("loved", false, "Save loved tracks to 'loved.csv' file")
 	artists := flag.Bool("artists", false, "Save artists to 'artists.csv' file")
 	tags := flag.Bool("tags", false, "Save tags to 'tags.csv' file")
+	artistsTags := flag.Bool("artists-tags", false, "Save tags for artists to 'artists-tags.csv' file")
 
 	flag.Parse()
 
@@ -45,6 +46,9 @@ func main() {
 	}
 	if *tags {
 		GetTags(*user, *key)
+	}
+	if *artistsTags {
+		GetArtistsTags(*user, *key)
 	}
 }
 
@@ -138,6 +142,31 @@ func GetArtists(user string, apiKey string) {
 	x = data
 	csv := x.ToCsv("\t")
 	file := "artists.csv"
+	err = SaveCsvFile(csv, file)
+	if err != nil {
+		log.Panicf("Error saving to %s.\n", file)
+		panic(err)
+	}
+
+	log.Printf("Saved %s.\n", file)
+}
+
+// GetArtistsTags gets artists
+func GetArtistsTags(user string, apiKey string) {
+	log.Printf("Fetching tags for artists for user %s with api key %s...\n", user, apiKey)
+
+	data, err := export.GetTagsForArtists(user, apiKey)
+
+	if err != nil {
+		log.Println("Error fetching tags for artists.")
+		panic(err)
+	}
+
+	log.Println("Fetched tags for artists.")
+	var x export.ArtistTagMap
+	x = data
+	csv := x.ToCsv("\t")
+	file := "artists-tags.csv"
 	err = SaveCsvFile(csv, file)
 	if err != nil {
 		log.Panicf("Error saving to %s.\n", file)

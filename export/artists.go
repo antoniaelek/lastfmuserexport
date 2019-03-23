@@ -12,6 +12,7 @@ import (
 type Artist struct {
 	Name      string
 	URL       string
+	ImageURL  string
 	PlayCount int
 }
 
@@ -22,7 +23,7 @@ type ArtistArray []Artist
 func (Artists ArtistArray) ToCsv(sep string) []string {
 	csv := make([]string, len(Artists))
 	for i, Artist := range Artists {
-		csv[i] = strconv.Itoa(Artist.PlayCount) + sep + Artist.Name + sep + Artist.URL
+		csv[i] = strconv.Itoa(Artist.PlayCount) + sep + Artist.Name + sep + Artist.URL + sep + Artist.ImageURL
 	}
 	return csv
 }
@@ -96,6 +97,7 @@ func GetArtists(user string, apiKey string) (artists []Artist, err error) {
 				Name:      a.Name,
 				PlayCount: cnt,
 				URL:       a.URL,
+				ImageURL:  a.Image[len(a.Image)-1].Text,
 			}
 			artists[idx] = artist
 			idx++
